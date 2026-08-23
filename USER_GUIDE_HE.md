@@ -33,6 +33,16 @@
 
 ### הפעלה ראשונה — Project Navigator
 
+ב־Codex, כאשר הפרויקט פתוח כתיקיית העבודה, אפשר להפעיל את ה־Codex Skill
+המותקן באמצעות:
+
+```text
+$project-navigator
+```
+
+אם ה־Skill אינו מופיע, פתח מחדש את Codex או התקן את תיקיית
+`.codex/skills/project-navigator` מתוך המאגר תחת `~/.codex/skills/`.
+
 העתק לצ׳אט את ההודעה הבאה:
 
 ```text

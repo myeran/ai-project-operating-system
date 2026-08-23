@@ -1,0 +1,4 @@
+interface:
+  display_name: Project Navigator
+  short_description: Guide project lifecycle progress safely.
+  default_prompt: Use $project-navigator to inspect the current project lifecycle and guide the next step.
