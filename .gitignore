@@ -1,0 +1,6 @@
+runtime/data/*.sqlite3
+runtime/data/*.sqlite3.*
+.runtime-launcher/
+__pycache__/
+*.py[cod]
+.DS_Store
