@@ -15,19 +15,57 @@
 
 ## איך מפעילים?
 
-1. הורד את הפרויקט:
+### 1. הורדת המאגר
 
-   ```bash
-   git clone https://github.com/myeran/ai-project-operating-system.git
-   cd ai-project-operating-system
-   ```
+אפשר לשמור את המאגר בכל תיקייה במחשב — למשל Documents, Desktop או תיקייה
+ייעודית לפרויקטים. אין חובה להשתמש ב־`Documents/Codex`.
 
-2. ב־macOS לחץ פעמיים על `Start AI Project OS.command`.
+אפשר להוריד באמצעות:
 
-3. המערכת תפעיל את ה־Runtime, את שכבת ה־MCP ואת ה־Local Chat ותפתח את ממשק
-   הצ׳אט בכתובת `http://127.0.0.1:8790`.
+```bash
+git clone https://github.com/myeran/ai-project-operating-system.git
+```
 
-4. כדי לעצור, לחץ פעמיים על `Stop AI Project OS.command`.
+המאגר ייווצר בתיקייה שבה הורצה הפקודה. אפשר גם לבקש מ־Codex:
+
+```text
+הורד את המאגר הבא למחשב שלי:
+https://github.com/myeran/ai-project-operating-system.git
+
+שמור אותו בתיקייה מקומית שאבחר.
+אל תשנה קבצים בשלב זה.
+לאחר ההורדה, הצג לי את הנתיב המלא לתיקייה.
+```
+
+### 2. פתיחת המאגר ב־Codex
+
+ב־Codex בחר **Open Folder** או **Add Project**, ובחר את התיקייה הראשית
+`ai-project-operating-system` שאליה הורדת את המאגר.
+
+זו התיקייה שבה נמצאים:
+
+```text
+README.md
+runtime
+.codex
+03_Skill_Registry
+```
+
+אין לבחור את תיקיית `runtime` או תיקיית משנה אחרת.
+
+### 3. הפעלת המערכת
+
+ב־macOS לחץ פעמיים על `Start AI Project OS.command`. לחלופין, מתוך תיקיית
+המאגר הפעל:
+
+```bash
+./Start\ AI\ Project\ OS.command
+```
+
+המערכת תפעיל את ה־Runtime, את שכבת ה־MCP ואת ה־Local Chat ותפתח את ממשק
+הצ׳אט בכתובת `http://127.0.0.1:8790`.
+
+כדי לעצור, לחץ פעמיים על `Stop AI Project OS.command`.
 
 ## מה כותבים בצ׳אט?
 
