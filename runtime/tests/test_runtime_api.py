@@ -52,6 +52,8 @@ class RuntimeAPIMVPTests(unittest.TestCase):
         self.assertEqual(response["discovery_status"], "COMPLETED")
         self.assertTrue(response["state_update_proposal"])
         self.assertFalse(response["state_committed"])
+        self.assertTrue(Path(response["lifecycle_artifacts"]["mermaid"]).exists())
+        self.assertTrue(Path(response["lifecycle_artifacts"]["html"]).exists())
         project_state = self.api.state.get_state(response["project_id"])
         self.assertEqual(
             project_state["canonical_state"]["project_identity"]["project_context"]["project_type"],

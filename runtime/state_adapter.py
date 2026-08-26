@@ -65,6 +65,7 @@ ALLOWED_UPDATE_FIELDS = {
     "completion_criteria",
     "next_recommended_action",
     "knowledge_items",
+    "discovery_output",
 }
 
 KNOWLEDGE_STATUSES = {"open", "approved", "needs_update"}
@@ -281,6 +282,8 @@ class StateAdapter:
                 if item.get("status") not in KNOWLEDGE_STATUSES:
                     raise InvalidStateError("Knowledge item status is unsupported")
                 seen.add(item_id)
+        if field_name == "discovery_output" and not isinstance(value, dict):
+            raise InvalidStateError("discovery_output must be an object")
 
     def _record_audit(
         self,
@@ -368,6 +371,7 @@ class StateAdapter:
         state["completion_criteria"] = self._loads(state["completion_criteria"], "completion_criteria")
         state["canonical_state"] = self._loads(state["canonical_state"], "canonical_state")
         state["knowledge_items"] = list((state["canonical_state"].get("knowledge") or {}).get("items") or [])
+        state["discovery_output"] = (state["canonical_state"].get("knowledge") or {}).get("discovery_output")
         return state
 
     def get_state(self, project_id: str) -> dict[str, Any]:
@@ -718,6 +722,8 @@ class StateAdapter:
             canonical["current_status"]["blockers"] = changes["missing_items"]
         if "knowledge_items" in changes:
             canonical.setdefault("knowledge", {})["items"] = changes["knowledge_items"]
+        if "discovery_output" in changes:
+            canonical.setdefault("knowledge", {})["discovery_output"] = changes["discovery_output"]
         canonical.setdefault("audit", {})
         canonical["audit"].update({
             "last_updated_at": now,

@@ -1,0 +1,20 @@
+%% FaceDoor Access — Project Lifecycle
+%% status.current=Discovery
+%% status.completed=
+%% status.future=Strategy,Planning,Design,Execution,Validation,Launch,Learning
+
+flowchart TB
+    D[Discovery\nDiscovery Skill] --> S[Strategy\nProduct Strategy Skill]
+    S --> P[Planning\nProject Planning Skill]
+    P --> U[Design\nUX/UI Skill]
+    U --> E[Execution\nEngineering Skill]
+    E --> V[Validation\nReview Skill]
+    V --> L[Launch\nLaunch Skill]
+    L --> K[Learning\nDocumentation Skill]
+
+    classDef current fill:#e4f5ed,stroke:#16845b,color:#126744,stroke-width:3px;
+    classDef completed fill:#e6f0fb,stroke:#2563a6,color:#1e568f,stroke-width:2px;
+    classDef future fill:#eef2f5,stroke:#9aa9b6,color:#6d8194,stroke-width:1px;
+
+    class D current;
+    class S,P,U,E,V,L,K future;

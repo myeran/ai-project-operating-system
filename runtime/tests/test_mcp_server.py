@@ -54,6 +54,7 @@ class MCPIntegrationTests(unittest.TestCase):
         navigator_payload = navigator["result"]["structuredContent"]
         self.assertEqual(navigator_payload["current_phase"], "Discovery")
         self.assertTrue(navigator_payload["read_only"])
+        self.assertTrue(Path(navigator_payload["lifecycle_artifacts"]["html"]).exists())
 
         status = self.mcp_app.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "project_status", "arguments": {"project_id": payload["project_id"]}}})
         status_payload = status["result"]["structuredContent"]

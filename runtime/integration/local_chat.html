@@ -33,9 +33,22 @@
     .secondary { background: #475569; }
     .status { font-size: 13px; color: #5b6773; margin: 6px 0; }
     .navigator { margin-top: 18px; border-top: 1px solid #e7ebef; padding-top: 16px; }
-    .navigator-step { padding: 8px 10px; margin: 6px 0; border-radius: 8px; background: #f7f8fa; }
-    .navigator-step.current { background: #e8f0fe; border-right: 4px solid #2563eb; }
-    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+    .navigator-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .navigator-header h2 { margin: 0; }
+    .navigator-toggle { padding: 8px 12px; font-size: 14px; white-space: nowrap; }
+    .navigator-panel { margin-top: 12px; padding: 14px 10px 8px; border: 1px solid #e5edf3; border-radius: 12px; background: linear-gradient(180deg, #fff 0%, #f7fafc 100%); }
+    .navigator-panel[hidden] { display: none; }
+    .navigator-flow { display: flex; flex-direction: column; align-items: center; }
+    .navigator-step { width: min(100%, 270px); box-sizing: border-box; padding: 10px 8px; text-align: center; border: 1px solid #9aa9b6; background: #eef2f5; color: #6d8194; font-size: 14px; line-height: 1.25; }
+    .navigator-step.current { border: 3px solid #16845b; background: #e4f5ed; color: #126744; }
+    .navigator-step.completed { border: 2px solid #2563a6; background: #e6f0fb; color: #1e568f; }
+    .navigator-arrow { width: 2px; height: 24px; position: relative; background: #17202a; }
+    .navigator-arrow::after { content: ""; position: absolute; left: 50%; bottom: -1px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid #17202a; }
+    .navigator-note { margin: 12px 0 2px; color: #6d8194; text-align: center; font-size: 12px; line-height: 1.45; }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      .navigator-panel:not([hidden]) { position: fixed; z-index: 20; right: 12px; bottom: 12px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; margin: 0; }
+    }
   </style>
 </head>
 <body>
@@ -60,10 +73,15 @@
         </div>
         <div id="knowledge-items"></div>
         <section class="navigator" aria-labelledby="navigator-title">
-          <h2 id="navigator-title">מפת הפרויקט</h2>
+          <div class="navigator-header">
+            <h2 id="navigator-title">מפת הפרויקט</h2>
+            <button id="show-navigator" class="navigator-toggle" type="button" aria-expanded="true" aria-controls="navigator-panel">סגור תרשים</button>
+          </div>
           <div id="navigator-status" class="status">התחל פרויקט כדי להציג את שלבי הפרויקט.</div>
-          <button id="show-navigator" type="button">הצג מפת פרויקט</button>
-          <div id="navigator-steps"></div>
+          <div id="navigator-panel" class="navigator-panel">
+            <div id="navigator-steps" class="navigator-flow"></div>
+            <div class="navigator-note">התרשים מלווה את הפרויקט ומתעדכן לאחר כל שינוי בשלב.</div>
+          </div>
         </section>
       </aside>
     </div>
@@ -88,14 +106,34 @@
     }
     function label(status) { return ({open: 'פתוח', approved: 'מאושר', needs_update: 'דורש עדכון'})[status] || status; }
     function phaseLabel(status) { return ({completed: 'הושלם', current: 'נוכחי', pending: 'ממתין'})[status] || status; }
+    const navigatorPanel = document.getElementById('navigator-panel');
+    const navigatorToggle = document.getElementById('show-navigator');
+    const defaultNavigatorSteps = [
+      ['Discovery', 'Discovery Skill'],
+      ['Strategy', 'Product Strategy Skill'],
+      ['Planning', 'Project Planning Skill'],
+      ['Design', 'UX/UI Skill'],
+      ['Execution', 'Engineering Skill'],
+      ['Validation', 'Review Skill'],
+      ['Launch', 'Launch Skill'],
+      ['Learning', 'Documentation Skill'],
+    ].map(([phase, responsible_skill], index) => ({ phase, responsible_skill, status: index === 0 ? 'current' : 'pending', missing: [] }));
     function renderNavigator(data) {
       navigatorStatus.textContent = `שלב נוכחי: ${data.current_phase || 'לא ידוע'} · Skill נוכחי: ${data.current_skill || 'לא רשום'} · ${data.next_action || ''}`;
       navigatorSteps.innerHTML = '';
-      (data.steps || []).forEach(step => {
-        const node = document.createElement('div'); node.className = `navigator-step ${step.status === 'current' ? 'current' : ''}`;
+      (data.steps || []).forEach((step, index) => {
+        const node = document.createElement('div'); node.className = `navigator-step ${step.status}`;
         const missing = (step.missing || []).length ? ` · חסר: ${step.missing.join(', ')}` : '';
-        node.textContent = `${step.phase} — ${phaseLabel(step.status)} · ${step.responsible_skill || 'אין Skill רשום'}${missing}`;
+        node.innerHTML = `<strong></strong><small></small>`;
+        node.querySelector('strong').textContent = step.phase;
+        node.querySelector('small').textContent = `${step.responsible_skill || 'אין Skill רשום'} · ${phaseLabel(step.status)}${missing}`;
         navigatorSteps.appendChild(node);
+        if (index < (data.steps || []).length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'navigator-arrow';
+          arrow.setAttribute('aria-hidden', 'true');
+          navigatorSteps.appendChild(arrow);
+        }
       });
     }
     function renderKnowledge(summary) {
@@ -119,10 +157,15 @@
     }
     async function loadKnowledge() { const response = await fetch('/api/knowledge-summary', {method:'POST'}); if (response.ok) renderKnowledge(await response.json()); }
     async function loadNavigator() { const response = await fetch('/api/project-navigator', {method:'POST'}); if (response.ok) renderNavigator(await response.json()); }
-    document.getElementById('show-navigator').addEventListener('click', async () => {
-      const button = document.getElementById('show-navigator');
-      button.disabled = true;
-      try { await loadNavigator(); } finally { button.disabled = false; }
+    renderNavigator({ current_phase: 'Discovery', current_skill: 'Discovery Skill', next_action: 'השלם את שלב Discovery כדי להתקדם.', steps: defaultNavigatorSteps });
+    navigatorToggle.addEventListener('click', async () => {
+      const shouldOpen = navigatorPanel.hidden;
+      navigatorPanel.hidden = !shouldOpen;
+      navigatorToggle.setAttribute('aria-expanded', String(shouldOpen));
+      navigatorToggle.textContent = shouldOpen ? 'סגור תרשים' : 'פתח תרשים';
+      if (!shouldOpen) return;
+      navigatorToggle.disabled = true;
+      try { await loadNavigator(); } finally { navigatorToggle.disabled = false; }
     });
     function consultationText() { return (knowledge?.items || []).map((item, i) => `${i + 1}. שאלה: ${item.question}\n   תשובה נוכחית: ${item.answer || '(אין תשובה עדיין)'}\n   סטטוס: ${label(item.status)}`).join('\n\n'); }
     async function copyToClipboard(text) {
@@ -164,7 +207,8 @@
         if (response.ok) {
           if (body.knowledge_summary) renderKnowledge(body.knowledge_summary);
           else await loadKnowledge();
-          await loadNavigator();
+          if (body.navigator) renderNavigator(body.navigator);
+          else await loadNavigator();
         }
       } catch (error) {
         add('שרת הצ׳אט המקומי אינו זמין.', 'system error');

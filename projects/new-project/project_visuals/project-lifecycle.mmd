@@ -1,0 +1,26 @@
+%% Generated from canonical Project State; do not edit status manually.
+%% project_id=c4c85a30-932d-4e8a-9a1f-cd7355f09bcd
+%% current_phase=Discovery
+
+flowchart TB
+    D[Discovery\nDiscovery Skill]
+    D --> S
+    S[Strategy\nProduct Strategy Skill]
+    S --> P
+    P[Planning\nProject Planning Skill]
+    P --> U
+    U[Design\nUX/UI Skill]
+    U --> E
+    E[Execution\nEngineering Skill]
+    E --> V
+    V[Validation\nReview Skill]
+    V --> L
+    L[Launch\nLaunch Skill]
+    L --> K
+    K[Learning\nDocumentation Skill]
+
+    classDef current fill:#e4f5ed,stroke:#16845b,color:#126744,stroke-width:3px;
+    classDef completed fill:#e6f0fb,stroke:#2563a6,color:#1e568f,stroke-width:2px;
+    classDef future fill:#eef2f5,stroke:#9aa9b6,color:#6d8194,stroke-width:1px;
+    class D current;
+    class S,P,U,E,V,L,K future;

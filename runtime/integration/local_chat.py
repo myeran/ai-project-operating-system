@@ -218,6 +218,16 @@ class LocalChatHandler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length).decode("utf-8"))
             if self.path == "/api/chat":
                 result = self.session.handle(body.get("message", ""))
+                # Refresh the side navigator immediately after a project starts
+                # or the conversation advances. The navigator remains a
+                # read-only projection of canonical Runtime state.
+                if self.session.active_project_id:
+                    try:
+                        result["navigator"] = self.session.project_navigator()
+                    except LocalChatError:
+                        # Do not hide a successful chat response if the optional
+                        # side-panel refresh is temporarily unavailable.
+                        pass
             elif self.path == "/api/knowledge-summary":
                 result = self.session.knowledge_summary()
             elif self.path == "/api/save-checkpoint":

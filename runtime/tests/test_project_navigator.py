@@ -36,6 +36,7 @@ class ProjectNavigatorTests(unittest.TestCase):
         self.assertFalse(navigator["can_advance"])
         self.assertTrue(navigator["read_only"])
         self.assertEqual(after["version"], before["version"])
+        self.assertTrue(Path(navigator["lifecycle_artifacts"]["html"]).exists())
 
     def test_completed_phase_returns_next_skill_without_transitioning(self):
         created = self.create_project("Navigator Next Skill")

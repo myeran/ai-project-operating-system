@@ -7,6 +7,7 @@ phases automatically.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 try:
@@ -15,12 +16,14 @@ try:
     from .skill_registry import SkillRegistry, SkillRegistryError
     from .state_adapter import InvalidStateError, StateAdapter, StateAdapterError
     from .project_navigator_skill import ProjectNavigatorSkill, DEFAULT_PHASE_TRANSITIONS
+    from .lifecycle_artifact_service import LifecycleArtifactService
 except ImportError:  # Supports direct test-module execution.
     from bootstrap_handler import BootstrapRequest, ProjectInstanceBootstrapHandler
     from project_resolver import ResolutionResult
     from skill_registry import SkillRegistry, SkillRegistryError
     from state_adapter import InvalidStateError, StateAdapter, StateAdapterError
     from project_navigator_skill import ProjectNavigatorSkill, DEFAULT_PHASE_TRANSITIONS
+    from lifecycle_artifact_service import LifecycleArtifactService
 
 
 class OrchestratorError(Exception):
@@ -52,6 +55,14 @@ class ProjectOrchestrator:
         self.state = state
         self.skill_registry = skill_registry or SkillRegistry()
         self.navigator = ProjectNavigatorSkill(DEFAULT_PHASE_TRANSITIONS, PHASE_SKILL_MAP)
+        database_path = Path(self.state.database)
+        default_database = Path(__file__).with_name("data") / "runtime.sqlite3"
+        artifact_root = (
+            Path(__file__).parents[1]
+            if database_path.resolve() == default_database.resolve()
+            else database_path.parent
+        )
+        self.lifecycle_artifacts = LifecycleArtifactService(artifact_root)
 
     def project_navigator(self, resolution: ResolutionResult) -> dict[str, Any]:
         """Return a read-only roadmap projection from Registry + canonical State."""
@@ -60,11 +71,15 @@ class ProjectOrchestrator:
                     "current_phase": None, "steps": [], "next_action": "לא ניתן לזהות את הפרויקט"}
         state = self.state.get_state(resolution.project_id)
         orchestration = self.orchestrate(resolution)
-        return self.navigator.navigate(
+        result = self.navigator.navigate(
             state,
             orchestration["phase_guidance"],
             skill_available=lambda name: self._skill_registered(name),
         )
+        visuals = self.lifecycle_artifacts.existing_paths(resolution.location or "")
+        if visuals:
+            result["lifecycle_artifacts"] = visuals
+        return result
 
     def _skill_registered(self, name: str) -> bool:
         try:
@@ -82,12 +97,16 @@ class ProjectOrchestrator:
         """Bootstrap a project and optionally activate its current-phase Skill."""
 
         initialized = self.bootstrap.initialize(request)
+        artifacts = self.lifecycle_artifacts.generate(
+            initialized["workspace_location"], initialized["state"]
+        )
         result = self._orchestration_result(
             project_id=initialized["project_id"],
             state=initialized["state"],
             action="Project Instance initialized; Discovery is ready to begin.",
         )
         result["initialized"] = initialized
+        result["lifecycle_artifacts"] = artifacts
         if activate_skill and request.project_context:
             resolution = ResolutionResult(
                 status="RESOLVED",
@@ -107,8 +126,16 @@ class ProjectOrchestrator:
                 actor=request.actor,
             )
             activated["initialized"] = initialized
+            activated["lifecycle_artifacts"] = artifacts
             return activated
         return result
+
+    def refresh_lifecycle_artifacts(self, project_id: str) -> dict[str, str]:
+        """Regenerate project-local lifecycle views from canonical State."""
+
+        project = self.bootstrap.registry.get_project(project_id)
+        state = self.state.get_state(project_id)
+        return self.lifecycle_artifacts.generate(project["location"], state)
 
     def continue_project(self, project_id: str) -> dict[str, Any]:
         """Load canonical State and return guidance without changing it."""
@@ -277,6 +304,13 @@ class ProjectOrchestrator:
             # initial Discovery questions and validation requirements.
             "open_questions": supplied.get("open_questions"),
             "validation_required": supplied.get("validation_required"),
+            "problem_statement": supplied.get("problem_statement"),
+            "confirmed_findings": supplied.get("confirmed_findings", []),
+            "assumptions": supplied.get("assumptions", []),
+            "decisions": supplied.get("decisions", []),
+            "user_needs": supplied.get("user_needs", []),
+            "initial_scope": supplied.get("initial_scope", {"in_scope": [], "out_of_scope": []}),
+            "risks": supplied.get("risks", {"confirmed": [], "potential": [], "unknown": []}),
             "goals": supplied.get("goals", planning.get("goals", [])),
             "constraints": supplied.get("constraints", []),
             "existing_decisions": supplied.get("existing_decisions", decisions.get("decisions", [])),
@@ -338,19 +372,25 @@ class ProjectOrchestrator:
         validation = list(output["validation_required"])
         existing = list(state.get("knowledge_items") or [])
         by_question = {item.get("question"): item for item in existing if isinstance(item, dict)}
-        knowledge_items = []
-        for index, question_data in enumerate(output.get("open_questions") or [], start=1):
-            question = question_data.get("question") if isinstance(question_data, dict) else str(question_data)
-            if not question:
-                continue
-            previous = by_question.get(question) or {}
-            knowledge_items.append({
-                "id": previous.get("id", f"discovery-question-{index}"),
-                "question": question,
-                "answer": previous.get("answer", ""),
-                "status": previous.get("status", "open"),
-                "updated_at": previous.get("updated_at"),
-            })
+        open_questions = output.get("open_questions")
+        if open_questions:
+            knowledge_items = []
+            for index, question_data in enumerate(open_questions, start=1):
+                question = question_data.get("question") if isinstance(question_data, dict) else str(question_data)
+                if not question:
+                    continue
+                previous = by_question.get(question) or {}
+                knowledge_items.append({
+                    "id": previous.get("id", f"discovery-question-{index}"),
+                    "question": question,
+                    "answer": previous.get("answer", ""),
+                    "status": previous.get("status", "open"),
+                    "updated_at": previous.get("updated_at"),
+                })
+        else:
+            # An empty question list means there are no new questions; it must
+            # not erase answers already committed to canonical State.
+            knowledge_items = existing
         return {
             "completed_outputs": completed,
             "missing_items": validation or ["None identified"],
@@ -374,6 +414,7 @@ class ProjectOrchestrator:
             ],
             "next_recommended_action": output["recommended_next_action"],
             "knowledge_items": knowledge_items,
+            "discovery_output": output,
         }
 
     def _discovery_failure(

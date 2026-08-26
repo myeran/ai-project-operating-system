@@ -333,7 +333,8 @@ class RuntimeAPIApplication:
         proposal = self.state.propose_state_update(project_id, {"knowledge_items": updated}, actor=actor)
         self.state.approve_state_proposal(proposal["proposal_id"], approver=actor)
         committed = self.state.commit_state_update(proposal["proposal_id"], expected_version=proposal["expected_version"], approved_by=actor, require_approval=True)
-        return {"project_id": project_id, "item": next(item for item in committed["knowledge_items"] if item["id"] == item_id), "state_version": committed["version"], "knowledge_summary": self._knowledge_summary(project_id, state=committed)}
+        artifacts = self.orchestrator.refresh_lifecycle_artifacts(project_id)
+        return {"project_id": project_id, "item": next(item for item in committed["knowledge_items"] if item["id"] == item_id), "state_version": committed["version"], "knowledge_summary": self._knowledge_summary(project_id, state=committed), "lifecycle_artifacts": artifacts}
 
     def _checkpoint_by_identifier(self, body: dict[str, Any]) -> dict[str, Any]:
         request, resolved = self._resolve_by_identifier(body, "Project Status", "STATUS")
@@ -346,7 +347,8 @@ class RuntimeAPIApplication:
         proposal = self.state.propose_state_update(resolved.project_id or "", {"knowledge_items": items}, actor=actor)
         self.state.approve_state_proposal(proposal["proposal_id"], approver=actor)
         committed = self.state.commit_state_update(proposal["proposal_id"], expected_version=proposal["expected_version"], approved_by=actor, require_approval=True)
-        return {"project_id": resolved.project_id, "saved": True, "state_version": committed["version"], "knowledge_summary": self._knowledge_summary(resolved.project_id or "", state=committed)}
+        artifacts = self.orchestrator.refresh_lifecycle_artifacts(resolved.project_id or "")
+        return {"project_id": resolved.project_id, "saved": True, "state_version": committed["version"], "knowledge_summary": self._knowledge_summary(resolved.project_id or "", state=committed), "lifecycle_artifacts": artifacts}
 
     def _resolve_by_identifier(
         self,
@@ -447,7 +449,8 @@ class RuntimeAPIApplication:
             require_approval=True,
         )
         committed = self.state.get_proposal(proposal_id)
-        return {"proposal": committed, "state": state, "status": committed["status"]}
+        artifacts = self.orchestrator.refresh_lifecycle_artifacts(proposal["project_id"])
+        return {"proposal": committed, "state": state, "status": committed["status"], "lifecycle_artifacts": artifacts}
 
     def _status(self, project_id: str) -> dict[str, Any]:
         request = self.gateway.receive(
@@ -492,6 +495,7 @@ class RuntimeAPIApplication:
             "discovery_status": orchestration.get("discovery_status"),
             "discovery_output": orchestration.get("discovery_output"),
             "state_committed": orchestration.get("state_committed", False),
+            "lifecycle_artifacts": orchestration.get("lifecycle_artifacts"),
         }
 
     @staticmethod

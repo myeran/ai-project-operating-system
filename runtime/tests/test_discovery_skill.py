@@ -107,6 +107,66 @@ class DiscoverySkillIntegrationTests(unittest.TestCase):
         self.assertEqual(result["discovery_output"]["validation_required"], ["Validate target user"])
         self.assertEqual(result["phase_guidance"]["missing"], ["Validate target user"])
 
+    def test_full_discovery_payload_is_forwarded_and_saved(self):
+        result = self.orchestrator.run_discovery(
+            self.resolution(),
+            {
+                "problem_statement": "Residents need a convenient additional access option.",
+                "confirmed_findings": ["The building committee approved the project."],
+                "assumptions": [{"assumption": "Residents will opt in", "how_to_validate": "Pilot"}],
+                "decisions": [{"decision": "Build an MVP", "owner": "project-owner", "approved": True}],
+                "user_needs": ["Convenient entry"],
+                "initial_scope": {"in_scope": ["Authorized face matching"], "out_of_scope": ["Replacing the intercom"]},
+                "risks": {"confirmed": [], "potential": ["False matches"], "unknown": []},
+                "open_questions": [],
+                "validation_required": [],
+            },
+        )
+
+        output = result["discovery_output"]
+        self.assertEqual(output["problem_statement"], "Residents need a convenient additional access option.")
+        self.assertEqual(output["confirmed_findings"], ["The building committee approved the project."])
+        self.assertEqual(output["user_needs"], ["Convenient entry"])
+        self.assertEqual(output["initial_scope"]["in_scope"], ["Authorized face matching"])
+        self.assertEqual(result["state_update_proposal"]["changes"]["discovery_output"], output)
+
+        proposal_id = result["state_update_proposal"]["proposal_id"]
+        self.state.approve_state_proposal(proposal_id, approver="project-owner")
+        self.state.commit_state_update(
+            proposal_id,
+            expected_version=result["state_update_proposal"]["expected_version"],
+            approved_by="project-owner",
+            require_approval=True,
+        )
+        saved = self.state.get_state(self.project_id)
+        self.assertEqual(saved["discovery_output"], output)
+        self.assertEqual(saved["canonical_state"]["knowledge"]["discovery_output"], output)
+
+    def test_empty_discovery_questions_preserve_existing_knowledge(self):
+        existing = [{
+            "id": "discovery-question-1",
+            "question": "What problem are we trying to solve?",
+            "answer": "A confirmed problem",
+            "status": "approved",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }]
+        changes = self.orchestrator._discovery_state_changes(
+            {"completed_outputs": [], "knowledge_items": existing, "completion_criteria": []},
+            {
+                "problem_statement": "A confirmed problem",
+                "confirmed_findings": [],
+                "assumptions": [],
+                "decisions": [],
+                "user_needs": [],
+                "initial_scope": {"in_scope": [], "out_of_scope": []},
+                "open_questions": [],
+                "risks": {"confirmed": [], "potential": [], "unknown": []},
+                "validation_required": [],
+                "recommended_next_action": "Continue",
+            },
+        )
+        self.assertEqual(changes["knowledge_items"], existing)
+
     def test_unavailable_skill_fails_safely(self):
         unavailable = ProjectOrchestrator(
             self.bootstrap,

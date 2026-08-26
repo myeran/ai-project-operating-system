@@ -131,6 +131,9 @@ class ResponsePresentation:
         if missing:
             lines.extend(["", "חסר בשלב הנוכחי:", *[f"- {item}" for item in missing]])
         lines.extend(["", f"הפעולה הבאה: {payload.get('next_action') or 'לא נקבעה'}"])
+        artifacts = payload.get("lifecycle_artifacts") or {}
+        if artifacts.get("html"):
+            lines.extend(["", f"תרשים חזותי: [{artifacts['html']}]({artifacts['html']})"])
         return "\n".join(lines)
 
     @staticmethod
