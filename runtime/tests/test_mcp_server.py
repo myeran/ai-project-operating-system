@@ -48,6 +48,7 @@ class MCPIntegrationTests(unittest.TestCase):
         payload = created["result"]["structuredContent"]
         self.assertTrue(payload["project_id"])
         self.assertEqual(payload["current_phase"], "Discovery")
+        self.assertEqual(payload["welcome_message"], "שלום ובהצלחה בפרוייקט")
         self.assertFalse(payload["state_committed"])
 
         navigator = self.mcp_app.handle({"jsonrpc": "2.0", "id": 25, "method": "tools/call", "params": {"name": "project_navigator", "arguments": {"project_id": payload["project_id"]}}})

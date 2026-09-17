@@ -63,6 +63,7 @@ class LocalChatTests(unittest.TestCase):
         chat = LocalChatSession(FakeMCP())
         result = chat.handle("אני רוצה להתחיל פרויקט חדש")
         self.assertEqual(set(result), {"reply"})
+        self.assertTrue(result["reply"].startswith("שלום ובהצלחה בפרוייקט"))
         self.assertNotIn("project-123", result["reply"])
         self.assertNotIn("tool", result["reply"])
 

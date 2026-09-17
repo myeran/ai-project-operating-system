@@ -11,6 +11,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlparse
 
+
+PROJECT_WELCOME_MESSAGE = "שלום ובהצלחה בפרוייקט"
+
 try:
     from .bootstrap_handler import BootstrapRequest, ProjectInstanceBootstrapHandler
     from .orchestrator import ProjectOrchestrator
@@ -234,6 +237,7 @@ class RuntimeAPIApplication:
             activate_skill=True,
         )
         response = self._guidance_response(request, orchestration, orchestration.get("initialized"))
+        response["welcome_message"] = PROJECT_WELCOME_MESSAGE
         response["knowledge_summary"] = {
             "project_id": response["project_id"],
             "state_version": response.get("state_version", 1),

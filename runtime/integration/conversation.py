@@ -95,7 +95,7 @@ class ResponsePresentation:
 
         self._remember_questions(payload, state)
         if intent == ConversationIntent.START_PROJECT:
-            return self._start_response(state)
+            return self._start_response(payload, state)
         if intent == ConversationIntent.PROJECT_STATUS:
             return self._status_response(payload)
         if intent == ConversationIntent.PROJECT_NAVIGATOR:
@@ -110,8 +110,9 @@ class ResponsePresentation:
         next_question = self._current_question(state)
         return f"הבנתי, תודה. השלב הבא: {next_question}"
 
-    def _start_response(self, state: ConversationState) -> str:
-        return f"בשמחה. נתחיל בהבנת הפרויקט. {self._current_question(state)}"
+    def _start_response(self, payload: dict[str, Any], state: ConversationState) -> str:
+        welcome = payload.get("welcome_message") or "שלום ובהצלחה בפרוייקט"
+        return f"{welcome}. נתחיל בהבנת הפרויקט. {self._current_question(state)}"
 
     def _status_response(self, payload: dict[str, Any]) -> str:
         phase = self._PHASES.get(str(payload.get("current_phase")), "השלב הנוכחי")
