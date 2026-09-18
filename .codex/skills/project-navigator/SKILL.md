@@ -29,6 +29,16 @@ When the user writes a natural-language request such as `אני רוצה להת�
 do not require `$project-navigator` or the browser Local Chat first. From any project
 folder, locate or register the shared Runtime and start it if it is unavailable:
 
+The first user-visible response must be exactly:
+
+```text
+שלום ובהצלחה בפרוייקט
+```
+
+Only after this greeting, perform the Runtime connection internally and then ask for
+the project name. Do not put the Runtime status or the project-name question before
+the greeting.
+
 ```bash
 runtime_root="$(python3 ~/.codex/skills/project-navigator/runtime_bridge.py start --workspace "$PWD")"
 ```
