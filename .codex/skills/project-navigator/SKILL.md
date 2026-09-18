@@ -23,6 +23,21 @@ Report each phase and its status, the active phase, the responsible Skill, compl
 4. If the user asks to start a new project, collect the required context: project name, type, goal, expected outcome, and current stage. Use the Runtime's project-start flow when it is connected.
 5. If the user asks to continue, resolve the named project before reading or reporting its state. If the project is ambiguous, ask the user to choose; do not guess.
 
+## Codex fast path
+
+When the user writes a natural-language request such as `אני רוצה להתחיל פרויקט חדש`,
+do not require `$project-navigator` or the browser Local Chat first. From the repository
+root, check the local Runtime health. If it is unavailable, run:
+
+```bash
+./Start\\ AI\\ Project\\ OS.command --no-browser
+```
+
+The launcher is idempotent and this mode keeps the conversation in Codex. Then collect
+only the missing project context, one question at a time, and submit the canonical
+request through `runtime/local_client.py` with the existing Runtime API. Do not create
+parallel project state or invent missing answers.
+
 ## Interaction style
 
 Use clear, concise Hebrew by default when the user writes Hebrew. Start with the result, then give the minimum next question or action needed. Guide one decision at a time. Preserve human approval boundaries: Skills recommend and analyze; the user approves strategic decisions, Scope, commitments, and phase transitions.

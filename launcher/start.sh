@@ -10,6 +10,11 @@ LOG_DIR="$STATE_DIR/logs"
 LOCK_DIR="$STATE_DIR/start.lock"
 STATE_FILE="$STATE_DIR/pids"
 CHAT_URL="http://127.0.0.1:8790"
+OPEN_CHAT=1
+
+if test "${1:-}" = "--no-browser"; then
+  OPEN_CHAT=0
+fi
 
 mkdir -p "$LOG_DIR"
 
@@ -33,7 +38,9 @@ all_managed_processes_alive() {
 
 if all_managed_processes_alive; then
   echo "המערכת כבר פעילה. לא הופעלו תהליכים כפולים."
-  open "$CHAT_URL"
+  if test "$OPEN_CHAT" -eq 1; then
+    open "$CHAT_URL"
+  fi
   exit 0
 fi
 
@@ -108,5 +115,9 @@ if ! wait_for_url "http://127.0.0.1:8765" || \
   exit 1
 fi
 
-echo "AI Project Operating System פעילה. פותח את Local Chat..."
-open "$CHAT_URL"
+if test "$OPEN_CHAT" -eq 1; then
+  echo "AI Project Operating System פעילה. פותח את Local Chat..."
+  open "$CHAT_URL"
+else
+  echo "AI Project Operating System פעילה. אפשר להמשיך ישירות בצ׳אט של Codex."
+fi

@@ -7,6 +7,7 @@ project storage or performs lifecycle decisions itself.
 from __future__ import annotations
 
 import json
+import argparse
 import re
 import sys
 from dataclasses import dataclass
@@ -98,11 +99,26 @@ def format_response(response: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    command = " ".join(sys.argv[1:]).strip()
+    parser = argparse.ArgumentParser(description="Send a project command to the local Runtime API.")
+    parser.add_argument("command", nargs="*", help="Project command, for example: Start Project: Demo")
+    parser.add_argument("--project-type")
+    parser.add_argument("--project-goal")
+    parser.add_argument("--expected-outcome")
+    parser.add_argument("--current-stage")
+    args = parser.parse_args()
+    command = " ".join(args.command).strip()
     if not command:
         command = input("Project command: ").strip()
+    context = {
+        key: value for key, value in {
+            "project_type": args.project_type,
+            "project_goal": args.project_goal,
+            "expected_outcome": args.expected_outcome,
+            "current_stage": args.current_stage,
+        }.items() if value
+    }
     try:
-        result = LocalProjectClient().execute(command)
+        result = LocalProjectClient().execute(command, context=context)
     except LocalClientError as exc:
         print(str(exc))
         return 1

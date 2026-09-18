@@ -25,6 +25,32 @@ class LocalProjectClientTests(unittest.TestCase):
         self.assertEqual(response["project_id"], "p1")
         self.assertEqual(calls, [("POST", "/projects/continue", {"project_name": "Personal Habit Tracker"})])
 
+    def test_start_routes_collected_context_to_runtime(self):
+        calls = []
+
+        def transport(method, path, payload):
+            calls.append((method, path, payload))
+            return {"project_id": "p2", "current_phase": "Discovery", "status": "proposed"}
+
+        client = LocalProjectClient(transport=transport)
+        client.execute(
+            "Start Project: Codex Project",
+            context={
+                "project_type": "Product",
+                "project_goal": "Reduce setup friction",
+                "expected_outcome": "One-message project start",
+                "current_stage": "Idea / Discovery",
+            },
+        )
+        self.assertEqual(calls, [("POST", "/projects/start", {
+            "project_name": "Codex Project",
+            "owner": "local-user",
+            "project_type": "Product",
+            "project_goal": "Reduce setup friction",
+            "expected_outcome": "One-message project start",
+            "current_stage": "Idea / Discovery",
+        })])
+
     def test_unknown_command_fails_closed(self):
         with self.assertRaises(LocalClientError):
             LocalProjectClient.parse("Do something with my project")

@@ -17,6 +17,12 @@ State Adapter ו־Skills בעלי חוזים ובדיקות.
 ./Start\ AI\ Project\ OS.command
 ```
 
+לעבודה ישירות מתוך Codex, ללא פתיחת דפדפן:
+
+```bash
+./Start\ AI\ Project\ OS.command --no-browser
+```
+
 לעצירה:
 
 ```bash
