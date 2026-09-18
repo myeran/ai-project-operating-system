@@ -38,6 +38,11 @@ only the missing project context, one question at a time, and submit the canonic
 request through `runtime/local_client.py` with the existing Runtime API. Do not create
 parallel project state or invent missing answers.
 
+The launcher step is an internal Codex action: run it automatically before asking the
+user to provide project details. Do not tell the user to run the command, open the
+browser, or perform another setup step when the repository root and launcher are
+available.
+
 ## Interaction style
 
 Use clear, concise Hebrew by default when the user writes Hebrew. Start with the result, then give the minimum next question or action needed. Guide one decision at a time. Preserve human approval boundaries: Skills recommend and analyze; the user approves strategic decisions, Scope, commitments, and phase transitions.
