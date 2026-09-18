@@ -30,7 +30,7 @@ do not require `$project-navigator` or the browser Local Chat first. From the re
 root, check the local Runtime health. If it is unavailable, run:
 
 ```bash
-./Start\\ AI\\ Project\\ OS.command --no-browser
+./Start\ AI\ Project\ OS.command --no-browser
 ```
 
 The launcher is idempotent and this mode keeps the conversation in Codex. Then collect
