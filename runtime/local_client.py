@@ -105,6 +105,7 @@ def main() -> int:
     parser.add_argument("--project-goal")
     parser.add_argument("--expected-outcome")
     parser.add_argument("--current-stage")
+    parser.add_argument("--workspace-location")
     args = parser.parse_args()
     command = " ".join(args.command).strip()
     if not command:
@@ -115,6 +116,7 @@ def main() -> int:
             "project_goal": args.project_goal,
             "expected_outcome": args.expected_outcome,
             "current_stage": args.current_stage,
+            "workspace_location": args.workspace_location,
         }.items() if value
     }
     try:

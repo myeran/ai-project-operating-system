@@ -26,17 +26,18 @@ Report each phase and its status, the active phase, the responsible Skill, compl
 ## Codex fast path
 
 When the user writes a natural-language request such as `אני רוצה להתחיל פרויקט חדש`,
-do not require `$project-navigator` or the browser Local Chat first. From the repository
-root, check the local Runtime health. If it is unavailable, run:
+do not require `$project-navigator` or the browser Local Chat first. From any project
+folder, locate or register the shared Runtime and start it if it is unavailable:
 
 ```bash
-./Start\ AI\ Project\ OS.command --no-browser
+runtime_root="$(python3 ~/.codex/skills/project-navigator/runtime_bridge.py start --workspace "$PWD")"
 ```
 
-The launcher is idempotent and this mode keeps the conversation in Codex. Then collect
-only the missing project context, one question at a time, and submit the canonical
-request through `runtime/local_client.py` with the existing Runtime API. Do not create
-parallel project state or invent missing answers.
+The bridge is idempotent, keeps the conversation in Codex, and records the shared
+Runtime location in `~/.codex/project-navigator/runtime.json`. Then collect only the
+missing project context, one question at a time, and submit the canonical request
+through `$runtime_root/runtime/local_client.py`, including the current folder as
+`--workspace-location`. Do not create parallel project state or invent missing answers.
 
 The launcher step is an internal Codex action: run it automatically before asking the
 user to provide project details. Do not tell the user to run the command, open the
