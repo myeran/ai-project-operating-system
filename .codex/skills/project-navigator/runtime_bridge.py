@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 
@@ -60,6 +60,8 @@ def runtime_is_available() -> bool:
     try:
         with urlopen(RUNTIME_URL, timeout=1):
             return True
+    except HTTPError:
+        return True
     except (URLError, TimeoutError, OSError):
         return False
 
@@ -80,6 +82,8 @@ def main() -> int:
             return 0 if runtime_is_available() else 1
         if not runtime_is_available():
             subprocess.run([str(root / "launcher" / "start.sh"), "--no-browser"], cwd=root, check=True, timeout=60)
+            if not runtime_is_available():
+                raise RuntimeError("Runtime launcher completed but Runtime API is not reachable")
         print(root)
         return 0
     except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
