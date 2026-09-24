@@ -106,9 +106,11 @@ class MCPIntegrationTests(unittest.TestCase):
         thread.start()
         try:
             chat = LocalChatSession(MCPClient(f"http://127.0.0.1:{mcp_server.server_port}/mcp"), debug=True)
-            start = chat.handle("אני רוצה להתחיל פרויקט חדש")
+            prompt = chat.handle("אני רוצה להתחיל פרויקט חדש")
+            start = chat.handle("MCP HTTP Project")
             continue_result = chat.handle("אני רוצה לבנות מערכת לניהול לקוחות")
             status = chat.handle("מה הסטטוס של הפרויקט?")
+            self.assertEqual(prompt["debug"]["pending_slot"], "project_name")
             self.assertEqual(start["debug"]["tool"], "start_project")
             self.assertEqual(continue_result["debug"]["tool"], "continue_project")
             self.assertEqual(status["debug"]["tool"], "project_status")

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import uuid
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
@@ -100,6 +98,10 @@ class LocalChatSession:
         if not isinstance(message, str) or not message.strip():
             raise LocalChatError("כתוב הודעה כדי להתחיל.")
         text = message.strip()
+
+        if self.state.awaiting_project_name:
+            return self._handle_pending_project_name(text)
+
         intent = self.intent_handler.classify(text, self.state)
         if intent == ConversationIntent.PROJECT_NAVIGATOR:
             if not self.active_project_id:
@@ -108,15 +110,9 @@ class LocalChatSession:
         elif intent == ConversationIntent.START_PROJECT:
             self.state.question_index = 0
             self.state.discovery_questions = []
-            name = self._project_name(text)
-            payload = self.mcp.call_tool("start_project", {
-                "project_name": name,
-                "owner": "local-user",
-                "project_type": "Product",
-                "project_goal": text,
-                "expected_outcome": "Structured project foundation and Discovery guidance",
-                "current_stage": "Idea / Discovery",
-            })
+            self.state.pending_start_request = text
+            self.state.awaiting_project_name = True
+            return self._project_name_prompt()
         elif intent in {ConversationIntent.CONTINUE_PROJECT, ConversationIntent.PROJECT_STATUS}:
             arguments = {"message": text}
             if self.active_project_id:
@@ -145,6 +141,47 @@ class LocalChatSession:
                 "tool": intent.value,
                 "project_id": self.active_project_id,
                 "raw_response": payload,
+            }
+        return result
+
+    def _handle_pending_project_name(self, text: str) -> dict[str, Any]:
+        if self.intent_handler.is_help_request(text) or self.intent_handler.is_project_name_request(text):
+            return self._project_name_prompt()
+
+        project_name = self.intent_handler.extract_project_name(text)
+        if not project_name:
+            return self._project_name_prompt()
+
+        request = self.state.pending_start_request or "התחלת פרויקט חדש"
+        self.state.pending_start_request = None
+        self.state.awaiting_project_name = False
+        payload = self.mcp.call_tool("start_project", {
+            "project_name": project_name,
+            "owner": "local-user",
+            "project_type": "Product",
+            "project_goal": request,
+            "expected_outcome": "Structured project foundation and Discovery guidance",
+            "current_stage": "Idea / Discovery",
+        })
+        project = payload.get("project") or {}
+        self.active_project_id = payload.get("project_id") or project.get("project_id") or self.active_project_id
+        self.active_project_name = project.get("project_name") or project_name
+        reply = self.presentation.present(ConversationIntent.START_PROJECT, payload, self.state, text)
+        result: dict[str, Any] = {"reply": reply}
+        if self.debug:
+            result["debug"] = {
+                "tool": ConversationIntent.START_PROJECT.value,
+                "project_id": self.active_project_id,
+                "raw_response": payload,
+            }
+        return result
+
+    def _project_name_prompt(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"reply": "שלום ובהצלחה בפרוייקט\nמה יהיה שם הפרויקט?"}
+        if self.debug:
+            result["debug"] = {
+                "intent": ConversationIntent.START_PROJECT.value,
+                "pending_slot": "project_name",
             }
         return result
 
@@ -185,14 +222,6 @@ class LocalChatSession:
             raise LocalChatError("אין פרויקט פעיל עדיין.")
         return self.mcp.call_tool("project_navigator", {"project_id": self.active_project_id})
 
-    @staticmethod
-    def _project_name(text: str) -> str:
-        match = re.search(r"(?:project|פרויקט)\s*[:\-]?\s+(.+)$", text, flags=re.IGNORECASE)
-        suffix = match.group(1).strip() if match else "Local Chat Project"
-        if suffix in {"חדש", "new", "a new project"}:
-            suffix = "Local Chat Project"
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        return f"{suffix[:80]} {stamp}".strip()
 
 
 class LocalChatHandler(BaseHTTPRequestHandler):

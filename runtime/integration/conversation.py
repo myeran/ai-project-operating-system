@@ -7,6 +7,7 @@ business decisions remain behind the MCP/Runtime boundary.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -26,6 +27,8 @@ class ConversationState:
     active_project_name: str | None = None
     question_index: int = 0
     discovery_questions: list[dict[str, Any]] = field(default_factory=list)
+    pending_start_request: str | None = None
+    awaiting_project_name: bool = False
 
     @property
     def has_active_project(self) -> bool:
@@ -33,28 +36,91 @@ class ConversationState:
 
 
 class ConversationIntentHandler:
-    """Classify using conversation state first and only narrow explicit cues."""
+    """Classify intent from normalized, composable meaning signals.
 
-    _START = re.compile(r"(?:פרויקט\s+חדש|להתחיל\s+פרויקט|התחל\s+פרויקט|new\s+project|start\s+project)", re.I)
-    _STATUS = re.compile(r"(?:סטטוס|מצב\s+הפרויקט|מה\s+מצב|status|state)", re.I)
-    _PROJECT_PROPOSAL = re.compile(
-        r"(?:אני\s+רוצה\s+(?:לבנות|ליצור|להקים|לפתח)|(?:לבנות|ליצור|להקים|לפתח)\s+(?:מערכת|אפליקציה|שירות|כלי|פרויקט)|יש\s+לי\s+רעיון)",
+    The classifier deliberately avoids matching one exact sentence. Orthographic
+    normalization handles common Hebrew variants, while the intent decision is
+    based on combinations of action, target, novelty, and idea signals.
+    """
+
+    _START_ACTION = re.compile(
+        r"(?:התחל(?:ה)?|להתחיל|פתח(?:י)?|לפתוח|בוא(?:\s+ו)?|אני\s+רוצה|יש\s+לי|start|open|create|build|develop|set\s+up|let's)",
         re.I,
     )
+    _EXPLICIT_START_ACTION = re.compile(
+        r"(?:התחל(?:ה)?|להתחיל|פתח(?:י)?|לפתוח|בוא(?:\s+ו)?|start|open|create|new|יש\s+לי\s+רעיון|i\s+have\s+an\s+idea)",
+        re.I,
+    )
+    _PROJECT_TARGET = re.compile(
+        r"(?:פרויקט|מערכת|אפליקציה|שירות|כלי|מוצר|רעיון|project|system|app|service|tool|product|idea|something|משהו)",
+        re.I,
+    )
+    _NEW_SIGNAL = re.compile(r"(?:חדש(?:ה)?|חדשה|new|fresh)", re.I)
+    _IDEA_SIGNAL = re.compile(r"(?:רעיון|idea)", re.I)
+    _STATUS = re.compile(r"(?:סטטוס|מצב|מה\s+קורה|status|state)", re.I)
     _NAVIGATOR = re.compile(r"^\s*(?:project[ _-]?navigator(?:[ _-]?skill)?|navigator|מפת\s+הפרויקט)\s*$", re.I)
 
     def classify(self, text: str, state: ConversationState) -> ConversationIntent:
-        if self._NAVIGATOR.search(text):
+        normalized = self.normalize(text)
+        if self._NAVIGATOR.search(normalized):
             return ConversationIntent.PROJECT_NAVIGATOR
-        if self._START.search(text):
-            return ConversationIntent.START_PROJECT
-        if self._STATUS.search(text):
+        if self._STATUS.search(normalized):
             return ConversationIntent.PROJECT_STATUS if state.has_active_project else ConversationIntent.NEEDS_START
         if state.has_active_project:
+            if self.is_explicit_start_request(normalized):
+                return ConversationIntent.START_PROJECT
             return ConversationIntent.CONTINUE_PROJECT
-        if self._PROJECT_PROPOSAL.search(text):
+        if self.is_start_request(normalized):
             return ConversationIntent.START_PROJECT
         return ConversationIntent.NEEDS_START
+
+    @classmethod
+    def normalize(cls, text: str) -> str:
+        """Normalize spelling and layout without changing the user's meaning."""
+        normalized = unicodedata.normalize("NFKC", text).strip().lower()
+        normalized = normalized.replace("פרוייקט", "פרויקט")
+        normalized = re.sub(r"[\u0591-\u05c7]", "", normalized)
+        normalized = re.sub(r"[?!.,؛,:()\[\]{}]", " ", normalized)
+        return re.sub(r"\s+", " ", normalized).strip()
+
+    @classmethod
+    def is_start_request(cls, text: str) -> bool:
+        normalized = cls.normalize(text)
+        action = bool(cls._START_ACTION.search(normalized))
+        target = bool(cls._PROJECT_TARGET.search(normalized))
+        new_signal = bool(cls._NEW_SIGNAL.search(normalized))
+        idea_signal = bool(cls._IDEA_SIGNAL.search(normalized))
+        return (
+            (action and target)
+            or (new_signal and target)
+            or idea_signal
+            or normalized in {"נתחיל", "בוא נתחיל", "start", "new project"}
+        )
+
+    @classmethod
+    def is_explicit_start_request(cls, text: str) -> bool:
+        normalized = cls.normalize(text)
+        return bool(cls._EXPLICIT_START_ACTION.search(normalized)) and (
+            bool(cls._PROJECT_TARGET.search(normalized))
+            or bool(cls._NEW_SIGNAL.search(normalized))
+            or bool(cls._IDEA_SIGNAL.search(normalized))
+        )
+
+    @classmethod
+    def is_project_name_request(cls, text: str) -> bool:
+        normalized = cls.normalize(text)
+        return bool(re.search(r"(?:מה\s+(?:יהיה|שם)|איזה\s+שם|איך\s+נקרא|what\s+.*name)", normalized))
+
+    @classmethod
+    def extract_project_name(cls, text: str) -> str:
+        normalized = unicodedata.normalize("NFKC", text).strip()
+        normalized = re.sub(
+            r"^(?:שם\s+הפרויקט\s*(?:הוא|:)?|הפרויקט\s+נקרא|נקרא\s+לו|שם\s*:?)\s*",
+            "",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        return re.sub(r"[.!?]+$", "", normalized).strip()
 
     @staticmethod
     def is_help_request(text: str) -> bool:

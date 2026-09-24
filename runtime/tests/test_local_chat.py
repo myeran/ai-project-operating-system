@@ -16,7 +16,7 @@ class FakeMCP:
         if name == "start_project":
             return {
                 "project_id": "project-123",
-                "project": {"project_id": "project-123", "project_name": "Local Chat Project"},
+                "project": {"project_id": "project-123", "project_name": arguments.get("project_name", "Local Chat Project")},
                 "current_phase": "Discovery",
                 "status": "proposed",
                 "next_recommended_action": "Answer the Discovery questions and provide evidence before defining product direction.",
@@ -40,11 +40,15 @@ class LocalChatTests(unittest.TestCase):
         fake = FakeMCP()
         chat = LocalChatSession(fake)
 
-        chat.handle("אני רוצה להתחיל פרויקט חדש")
+        start = chat.handle("אני רוצה להתחיל פרויקט חדש")
+        self.assertEqual(start["reply"], "שלום ובהצלחה בפרוייקט\nמה יהיה שם הפרויקט?")
+        self.assertEqual(fake.calls, [])
+        chat.handle("מערכת ניהול לקוחות")
         chat.handle("אני רוצה לבנות מערכת לניהול לקוחות")
         chat.handle("מה הסטטוס של הפרויקט?")
 
         self.assertEqual([call[0] for call in fake.calls], ["start_project", "continue_project", "update_knowledge_item", "project_status"])
+        self.assertEqual(fake.calls[0][1]["project_name"], "מערכת ניהול לקוחות")
         self.assertEqual(fake.calls[1][1], {"project_id": "project-123", "message": "אני רוצה לבנות מערכת לניהול לקוחות"})
         self.assertEqual(fake.calls[2][1]["answer"], "אני רוצה לבנות מערכת לניהול לקוחות")
         self.assertEqual(fake.calls[3][1], {"project_id": "project-123", "message": "מה הסטטוס של הפרויקט?"})
@@ -52,12 +56,12 @@ class LocalChatTests(unittest.TestCase):
     def test_short_new_project_phrase_starts_conversation(self):
         chat = LocalChatSession(FakeMCP())
         result = chat.handle("פרויקט חדש")
-        self.assertIn("נתחיל בהבנת הפרויקט", result["reply"])
+        self.assertIn("מה יהיה שם הפרויקט?", result["reply"])
 
     def test_natural_project_proposal_starts_without_command(self):
         chat = LocalChatSession(FakeMCP())
         result = chat.handle("אני רוצה לבנות מערכת עזרה במשימות שיש לי")
-        self.assertIn("נתחיל בהבנת הפרויקט", result["reply"])
+        self.assertIn("מה יהיה שם הפרויקט?", result["reply"])
 
     def test_user_does_not_see_internal_fields_by_default(self):
         chat = LocalChatSession(FakeMCP())
@@ -70,23 +74,51 @@ class LocalChatTests(unittest.TestCase):
     def test_debug_is_opt_in(self):
         chat = LocalChatSession(FakeMCP(), debug=True)
         result = chat.handle("אני רוצה להתחיל פרויקט חדש")
-        self.assertEqual(result["debug"]["tool"], "start_project")
-        self.assertEqual(result["debug"]["project_id"], "project-123")
+        self.assertEqual(result["debug"]["intent"], "start_project")
+        self.assertEqual(result["debug"]["pending_slot"], "project_name")
 
     def test_natural_help_messages_keep_the_current_question(self):
         chat = LocalChatSession(FakeMCP())
         chat.handle("אני רוצה להתחיל פרויקט חדש")
         reply = chat.handle("מה לעשות?")["reply"]
-        self.assertIn("איזו בעיה אנחנו מנסים לפתור?", reply)
+        self.assertIn("מה יהיה שם הפרויקט?", reply)
 
     def test_project_navigator_command_returns_skill_roadmap(self):
         fake = FakeMCP()
         chat = LocalChatSession(fake)
         chat.handle("אני רוצה להתחיל פרויקט חדש")
+        chat.handle("Local Chat Project")
         result = chat.handle("project_navigator_skill")
         self.assertEqual(fake.calls[-1][0], "project_navigator")
         self.assertIn("Discovery Skill", result["reply"])
         self.assertIn("Product Strategy Skill", result["reply"])
+
+    def test_common_paraphrases_and_hebrew_spelling_share_start_intent(self):
+        phrases = (
+            "פתח פרוייקט חדש",
+            "בוא נתחיל משהו חדש",
+            "יש לי רעיון",
+            "אני רוצה להקים מערכת חדשה",
+            "open a new project",
+        )
+        for phrase in phrases:
+            with self.subTest(phrase=phrase):
+                chat = LocalChatSession(FakeMCP())
+                result = chat.handle(phrase)
+                self.assertEqual(result["reply"], "שלום ובהצלחה בפרוייקט\nמה יהיה שם הפרויקט?")
+                self.assertIsNone(chat.active_project_id)
+
+    def test_project_is_created_only_after_name_is_provided(self):
+        fake = FakeMCP()
+        chat = LocalChatSession(fake)
+
+        chat.handle("פתח פרוייקט חדש")
+        self.assertEqual(fake.calls, [])
+
+        chat.handle("שם הפרויקט הוא מרכז שירות")
+        self.assertEqual(fake.calls[0][0], "start_project")
+        self.assertEqual(fake.calls[0][1]["project_name"], "מרכז שירות")
+        self.assertEqual(chat.active_project_name, "מרכז שירות")
 
     def test_project_navigator_requires_active_project(self):
         result = LocalChatSession(FakeMCP()).handle("project_navigator_skill")
