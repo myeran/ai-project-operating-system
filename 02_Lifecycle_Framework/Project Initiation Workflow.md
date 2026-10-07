@@ -58,6 +58,11 @@ Recommend Next Step
 
 ### Project Workspace
 
+שורש המבנה הוא התיקייה המקומית הקנונית שנבחרה בזמן Bootstrap ונשמרה ב־
+`Project Registry.location`. אותו Work קבוע המחובר לתיקייה משמש את כל שלבי
+הביצוע; Chat בתוך אותו ChatGPT Project משמש לתכנון, דיונים והחלטות. אין ליצור
+שורש נוסף בתיקיית המראה הפנימית של ChatGPT.
+
 ברירת המחדל למבנה Workspace היא:
 
 ```text

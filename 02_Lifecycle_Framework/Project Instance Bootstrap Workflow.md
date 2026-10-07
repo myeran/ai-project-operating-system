@@ -95,6 +95,14 @@ Project Registry הוא אינדקס ואינו מחליף את Project State ה
 
 ## 7. Step 4 — Create Minimal Workspace
 
+לפני רישום ה־Project Instance, בחר או צור תיקייה מקומית אמיתית במק. שמור ב־
+`project_registry_entry.location` את הנתיב המוחלט והקנוני שלה. אין להשתמש
+ב־`~/.codex/.chatgpt-projects` או בתיקיית העבודה הנוכחית כברירת מחדל סמויה.
+ב־ChatGPT Project רגיל יישארו Chat לתכנון, דיונים והחלטות ו־Work קבוע אחד
+לביצוע המחובר לתיקייה המקומית. מתוך Work בצע בדיקת יצירה, קריאה, עדכון
+וקריאה חוזרת של קובץ זמני, מחק אותו ואמת שנעלם. אם החיבור או הבדיקה נכשלים,
+Bootstrap אינו שלם ואין להעביר Handoff כפרויקט מוכן.
+
 צור רק את מבנה הבסיס הנדרש:
 
 ```text
@@ -190,6 +198,8 @@ Bootstrap נחשב שלם כאשר:
 - נקשרה גרסת OS.
 - נוצר Project Registry Entry.
 - נוצר Workspace מינימלי.
+- נתיב התיקייה המקומית הקנוני נשמר ב־Registry ואומת מול החיבור של Work.
+- בדיקת קריאה/כתיבה/עדכון מתוך Work עברה וה־artifact הזמני נמחק.
 - נוצר Project State קנוני תקין.
 - ה־Project Instance מתחיל ב־Discovery עם `status: proposed`.
 - לא הועתק Project Knowledge מפרויקט אחר.
